@@ -768,7 +768,7 @@ function mouseEventToCoords(event) {
  */
 function onDocumentMouseMove(event) {
     if (draggingHotSpot) {
-        moveHotSpot(draggingHotSpot, event)
+        moveHotSpot(draggingHotSpot, event);
     }
     else if (isUserInteracting && loaded) {
         latestInteraction = Date.now();
@@ -794,7 +794,10 @@ function onDocumentMouseMove(event) {
  * @private
  */
 function onDocumentMouseUp(event) {
+    if (draggingHotSpot && draggingHotSpot.dragHandlerFunc)
+        draggingHotSpot.dragHandlerFunc(event);
     draggingHotSpot = null;
+
     if (!isUserInteracting) {
         return;
     }
@@ -915,7 +918,10 @@ function onDocumentTouchMove(event) {
  * @private
  */
 function onDocumentTouchEnd() {
+    if (draggingHotSpot && draggingHotSpot.dragHandlerFunc)
+        draggingHotSpot.dragHandlerFunc(event);
     draggingHotSpot = null;
+
     isUserInteracting = false;
     if (Date.now() - latestInteraction > 150) {
         speed.pitch = speed.yaw = 0;
@@ -969,7 +975,10 @@ function onDocumentPointerMove(event) {
  * @param {PointerEvent} event - Document pointer up event.
  */
 function onDocumentPointerUp(event) {
-        draggingHotSpot = null;
+    if (draggingHotSpot && draggingHotSpot.dragHandlerFunc)
+        draggingHotSpot.dragHandlerFunc(event);
+    draggingHotSpot = null;
+
     if (event.pointerType == 'touch') {
         var defined = false;
         for (var i = 0; i < pointerIDs.length; i++) {
@@ -1769,7 +1778,10 @@ function createHotSpot(hs) {
         });
         div.addEventListener('touchstart', (e) => {
             draggingHotSpot = hs;
-        })
+        });
+        div.addEventListener('pointerdown', (e) => {
+            draggingHotSpot = hs;
+        });
     }
     
     hs.div = div;
