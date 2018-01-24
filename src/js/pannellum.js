@@ -103,6 +103,7 @@ var defaultConfig = {
     animationTimingFunction: timingFunction,
     draggable: true,
     disableKeyboardCtrl: false,
+    crossOrigin: 'anonymous',
 };
 
 // Translatable / configurable strings
@@ -309,7 +310,7 @@ function init() {
         panoImage = [];
         for (i = 0; i < 6; i++) {
             panoImage.push(new Image());
-            panoImage[i].crossOrigin = 'anonymous';
+            panoImage[i].crossOrigin = config.crossOrigin;
         }
         infoDisplay.load.lbox.style.display = 'block';
         infoDisplay.load.lbar.style.display = 'none';
@@ -430,6 +431,7 @@ function init() {
             }
             xhr.responseType = 'blob';
             xhr.setRequestHeader('Accept', 'image/*,*/*;q=0.9');
+            xhr.withCredentials = config.crossOrigin === 'use-credentials';
             xhr.send();
         }
     }
