@@ -1723,8 +1723,8 @@ function createHotSpot(hs) {
         a.href = encodeURI(hs.URL);
         a.target = '_blank';
         renderContainer.appendChild(a);
-        div.style.cursor = 'pointer';
-        span.style.cursor = 'pointer';
+        div.className += ' pnlm-pointer';
+        span.className += ' pnlm-pointer';
         a.appendChild(div);
     } else {
         if (hs.sceneId) {
@@ -1735,8 +1735,8 @@ function createHotSpot(hs) {
                 }
                 return false;
             };
-            div.style.cursor = 'pointer';
-            span.style.cursor = 'pointer';
+            div.className += ' pnlm-pointer';
+            span.className += ' pnlm-pointer';
         }
         renderContainer.appendChild(div);
     }
@@ -1754,8 +1754,8 @@ function createHotSpot(hs) {
         div.addEventListener('click', function(e) {
             hs.clickHandlerFunc(e, hs.clickHandlerArgs);
         }, 'false');
-        div.style.cursor = 'pointer';
-        span.style.cursor = 'pointer';
+        div.className += ' pnlm-pointer';
+        span.className += ' pnlm-pointer';
     }
     if(hs.draggable){
         div.addEventListener('mousedown', (e) => {
