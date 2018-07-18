@@ -2919,7 +2919,8 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
  * @instance
  */
 this.resize = function() {
-    onDocumentResize();
+    if (renderer)
+        onDocumentResize();
 }
 
 /**
