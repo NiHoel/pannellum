@@ -1721,7 +1721,7 @@ function createHotSpot(hs) {
     } else if (hs.URL) {
         a = document.createElement('a');
         a.href = sanitizeURL(hs.URL);
-        a.target = '_blank';
+        a.target = hs.target ? hs.target : '_blank';
         renderContainer.appendChild(a);
         div.className += ' pnlm-pointer';
         span.className += ' pnlm-pointer';
