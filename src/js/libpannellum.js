@@ -1162,6 +1162,7 @@ function Renderer(container) {
                         processLoadedTexture(img, this.texture);
                         this.callback(this.texture, true);
                     }
+                    releaseTextureImageLoader(this);
                 })
             } else {
                 this.image.src = src;
