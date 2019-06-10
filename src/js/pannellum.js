@@ -2284,6 +2284,8 @@ function load() {
  * @param {boolean} [fadeDone] - If `true`, fade setup is skipped.
  */
 function loadScene(sceneId, targetPitch, targetYaw, targetHfov, fadeDone) {
+    if (!loaded)
+        fadeDone = true;    // Don't try to fade when there isn't a scene loaded
     loaded = false;
     animatedMove = {};
     
