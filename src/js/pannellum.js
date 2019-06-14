@@ -456,6 +456,13 @@ function init() {
     if (config.draggable)
         uiContainer.classList.add('pnlm-grab');
     uiContainer.classList.remove('pnlm-grabbing');
+
+    // Properly handle switching to dynamic scenes
+    update = config.dynamicUpdate === true;
+    if (config.dynamic) {
+        panoImage = config.panorama;
+        onImageLoad();
+    }
 }
 
 /**
@@ -2350,13 +2357,6 @@ function loadScene(sceneId, targetPitch, targetYaw, targetHfov, fadeDone) {
     }
     fireEvent('scenechange', sceneId);
     load();
-
-    // Properly handle switching to dynamic scenes
-    update = config.dynamicUpdate === true;
-    if (config.dynamic) {
-        panoImage = config.panorama;
-        onImageLoad();
-    }
 }
 
 /**
