@@ -135,7 +135,7 @@ defaultConfig.strings = {
                 '%spx wide. Try another device.' +
                 ' (If you\'re the author, try scaling down the image.)',    // Two substitutions: image width, max image width
     unknownError: 'Unknown error. Check developer console.',
-}
+};
 
 // Initialize container
 container = typeof container === 'string' ? document.getElementById(container) : container;
@@ -474,7 +474,7 @@ function init() {
 function absoluteURL(url) {
     // From http://stackoverflow.com/a/19709846
     return new RegExp('^(?:[a-z]+:)?//', 'i').test(url) || url[0] == '/' || url.slice(0, 5) == 'blob:';
-};
+}
 
 /**
  * Create renderer and initialize event listeners once image is loaded.
@@ -1248,12 +1248,11 @@ function keyRepeat() {
         latestInteraction = Date.now();
 
     // If auto-rotate
-    var inactivityInterval = Date.now() - latestInteraction;
     if (config.autoRotate) {
         // Pan
         if (newTime - prevTime > 0.001) {
             var timeDiff = (newTime - prevTime) / 1000;
-            var yawDiff = (speed.yaw / timeDiff * diff - config.autoRotate * 0.2) * timeDiff
+            var yawDiff = (speed.yaw / timeDiff * diff - config.autoRotate * 0.2) * timeDiff;
             yawDiff = (-config.autoRotate > 0 ? 1 : -1) * Math.min(Math.abs(config.autoRotate * timeDiff), Math.abs(yawDiff));
             config.yaw += yawDiff;
         }
@@ -1437,6 +1436,8 @@ function render() {
     var tmpyaw;
 
     if (loaded) {
+        var canvas = renderer.getCanvas();
+
         // Keep a tmp value of yaw for autoRotate comparison later
         tmpyaw = config.yaw;
 
@@ -1444,8 +1445,7 @@ function render() {
         var hoffcut = 0,
             voffcut = 0;
         if (config.avoidShowingBackground) {
-            var canvas = renderer.getCanvas(),
-                hfov2 = config.hfov / 2,
+            var hfov2 = config.hfov / 2,
                 vfov2 = Math.atan2(Math.tan(hfov2 / 180 * Math.PI), (canvas.width / canvas.height)) * 180 / Math.PI,
                 transposed = config.vaov > config.haov;
             if (transposed) {
@@ -1485,7 +1485,6 @@ function render() {
         }
 
         // Ensure the calculated pitch is within min and max allowed
-        var canvas = renderer.getCanvas();
         var vfov = 2 * Math.atan(Math.tan(config.hfov / 180 * Math.PI * 0.5) /
             (canvas.width / canvas.height)) / Math.PI * 180;
         var minPitch = config.minPitch + vfov / 2,
@@ -1540,7 +1539,7 @@ Quaternion.prototype.multiply = function(q) {
                           this.x*q.w + this.w*q.x + this.y*q.z - this.z*q.y,
                           this.y*q.w + this.w*q.y + this.z*q.x - this.x*q.z,
                           this.z*q.w + this.w*q.z + this.x*q.y - this.y*q.x);
-}
+};
 
 /**
  * Converts quaternion to Euler angles.
@@ -1554,7 +1553,7 @@ Quaternion.prototype.toEulerAngles = function() {
         psi = Math.atan2(2 * (this.w * this.z + this.x * this.y),
                          1 - 2 * (this.y * this.y + this.z * this.z));
     return [phi, theta, psi];
-}
+};
 
 /**
  * Converts device orientation API Tait-Bryan angles to a quaternion.
@@ -1707,7 +1706,7 @@ function createHotSpot(hs) {
     hs.yaw = Number(hs.yaw) || 0;
 
     var div = document.createElement('div');
-    div.className = 'pnlm-hotspot-base'
+    div.className = 'pnlm-hotspot-base';
     if (hs.cssClass)
         div.className += ' ' + hs.cssClass;
     else
@@ -1720,24 +1719,24 @@ function createHotSpot(hs) {
     var a;
     if (hs.video) {
         var video = document.createElement('video'),
-            p = hs.video;
-        if (config.basePath && !absoluteURL(p))
-            p = config.basePath + p;
-        video.src = sanitizeURL(p);
+            vidp = hs.video;
+        if (config.basePath && !absoluteURL(vidp))
+            vidp = config.basePath + vidp;
+        video.src = sanitizeURL(vidp);
         video.controls = true;
         video.style.width = hs.width + 'px';
         renderContainer.appendChild(div);
         span.appendChild(video);
     } else if (hs.image) {
-        var p = hs.image;
-        if (config.basePath && !absoluteURL(p))
-            p = config.basePath + p;
+        var imgp = hs.image;
+        if (config.basePath && !absoluteURL(imgp))
+            imgp = config.basePath + imgp;
         a = document.createElement('a');
-        a.href = sanitizeURL(hs.URL ? hs.URL : p);
+        a.href = sanitizeURL(hs.URL ? hs.URL : imgp);
         a.target = '_blank';
         span.appendChild(a);
         var image = document.createElement('img');
-        image.src = sanitizeURL(p);
+        image.src = sanitizeURL(imgp);
         image.style.width = hs.width + 'px';
         image.style.paddingTop = '5px';
         renderContainer.appendChild(div);
@@ -1801,7 +1800,7 @@ function createHotSpot(hs) {
     }
     
     hs.div = div;
-};
+}
 
 /**
  *
@@ -2049,7 +2048,7 @@ function processOptions(isPreview) {
                 link.target = '_blank';
                 link.textContent = 'Click here to view this panorama in an alternative viewer.';
                 var message = document.createElement('p');
-                message.textContent = 'Your browser does not support WebGL.'
+                message.textContent = 'Your browser does not support WebGL.';
                 message.appendChild(document.createElement('br'));
                 message.appendChild(link);
                 infoDisplay.errorMsg.innerHTML = ''; // Removes all children nodes
@@ -2223,7 +2222,7 @@ function constrainHfov(hfov) {
     }
     if (minHfov > config.maxHfov) {
         // Don't change view if bounds don't make sense
-        console.log('HFOV bounds do not make sense (minHfov > maxHfov).')
+        console.log('HFOV bounds do not make sense (minHfov > maxHfov).');
         return config.hfov;
     }
     var newHfov = config.hfov;
@@ -2239,8 +2238,7 @@ function constrainHfov(hfov) {
         var canvas = renderer.getCanvas();
         newHfov = Math.min(newHfov,
                            Math.atan(Math.tan((config.maxPitch - config.minPitch) / 360 * Math.PI) /
-                                     canvas.height * canvas.width)
-                               * 360 / Math.PI);
+                                     canvas.height * canvas.width) * 360 / Math.PI);
     }
     return newHfov;
 }
@@ -2469,9 +2467,9 @@ this.setPitch = function(pitch, animated, callback, callbackArgs) {
             'startPosition': config.pitch,
             'endPosition': pitch,
             'duration': animated
-        }
+        };
         if (typeof callback == 'function')
-            setTimeout(function(){callback(callbackArgs)}, animated);
+            setTimeout(function(){callback(callbackArgs);}, animated);
     } else {
         config.pitch = pitch;
     }
@@ -2530,22 +2528,22 @@ this.setYaw = function(yaw, animated, callback, callbackArgs) {
         return this;
     }
     animated = animated == undefined ? 1000: Number(animated);
-    yaw = ((yaw + 180) % 360) - 180 // Keep in bounds
+    yaw = ((yaw + 180) % 360) - 180; // Keep in bounds
     if (animated) {
         // Animate in shortest direction
         if (config.yaw - yaw > 180)
-            yaw += 360
+            yaw += 360;
         else if (yaw - config.yaw > 180)
-            yaw -= 360
+            yaw -= 360;
 
         animatedMove.yaw = {
             'startTime': Date.now(),
             'startPosition': config.yaw,
             'endPosition': yaw,
             'duration': animated
-        }
+        };
         if (typeof callback == 'function')
-            setTimeout(function(){callback(callbackArgs)}, animated);
+            setTimeout(function(){callback(callbackArgs);}, animated);
     } else {
         config.yaw = yaw;
     }
@@ -2610,9 +2608,9 @@ this.setHfov = function(hfov, animated, callback, callbackArgs) {
             'startPosition': config.hfov,
             'endPosition': constrainHfov(hfov),
             'duration': animated
-        }
+        };
         if (typeof callback == 'function')
-            setTimeout(function(){callback(callbackArgs)}, animated);
+            setTimeout(function(){callback(callbackArgs);}, animated);
     } else {
         setHfov(hfov);
     }
@@ -2673,7 +2671,7 @@ this.lookAt = function(pitch, yaw, hfov, animated, callback, callbackArgs) {
     if (typeof callback == 'function')
         callback(callbackArgs);
     return this;
-}
+};
 
 /**
  * Returns the panorama's north offset.
@@ -2782,7 +2780,7 @@ this.stopAutoRotate = function() {
 this.stopMovement = function() {
     stopAnimation();
     speed = {'yaw': 0, 'pitch': 0, 'hfov': 0};
-}
+};
 
 /**
  * Returns the panorama renderer.
@@ -2808,7 +2806,7 @@ this.setUpdate = function(bool) {
     else
         animateInit();
     return this;
-}
+};
 
 /**
  * Calculate panorama pitch and yaw from location of mouse event.
@@ -2819,7 +2817,7 @@ this.setUpdate = function(bool) {
  */
 this.mouseEventToCoords = function(event) {
     return mouseEventToCoords(event);
-}
+};
 
 /**
  * Change scene being viewed.
@@ -2835,7 +2833,7 @@ this.loadScene = function(sceneId, pitch, yaw, hfov) {
     if (loaded !== false)
         loadScene(sceneId, pitch, yaw, hfov);
     return this;
-}
+};
 
 /**
  * Get ID of current scene.
@@ -2845,7 +2843,7 @@ this.loadScene = function(sceneId, pitch, yaw, hfov) {
  */
 this.getScene = function() {
     return config.scene;
-}
+};
 
 /**
  * Add a new scene.
@@ -2883,7 +2881,7 @@ this.removeScene = function(sceneId) {
 this.toggleFullscreen = function() {
     toggleFullscreen();
     return this;
-}
+};
 
 /**
  * Get configuration of current scene.
@@ -2893,7 +2891,7 @@ this.toggleFullscreen = function() {
  */
 this.getConfig = function() {
     return config;
-}
+};
 
 /**
  * Get viewer's container element.
@@ -2903,7 +2901,7 @@ this.getConfig = function() {
  */
 this.getContainer = function() {
     return container;
-}
+};
 
 /**
  * Add a new hot spot.
@@ -2929,7 +2927,7 @@ this.addHotSpot = function(hs, sceneId) {
             }
             initialConfig.scenes[id].hotSpots.push(hs); // Add hot spot to config
         } else {
-            throw 'Invalid scene ID!'
+            throw 'Invalid scene ID!';
         }
     }
     if (sceneId === undefined || config.scene == sceneId) {
@@ -2939,7 +2937,7 @@ this.addHotSpot = function(hs, sceneId) {
             renderHotSpot(hs);
     }
     return this;
-}
+};
 
 /**
  * Remove a hot spot.
@@ -2971,11 +2969,11 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
         if (initialConfig.scenes.hasOwnProperty(sceneId)) {
             if (!initialConfig.scenes[sceneId].hasOwnProperty('hotSpots'))
                 return false;
-            for (var i = 0; i < initialConfig.scenes[sceneId].hotSpots.length; i++) {
-                if (initialConfig.scenes[sceneId].hotSpots[i].hasOwnProperty('id') &&
-                    initialConfig.scenes[sceneId].hotSpots[i].id === hotSpotId) {
+            for (var j = 0; j < initialConfig.scenes[sceneId].hotSpots.length; j++) {
+                if (initialConfig.scenes[sceneId].hotSpots[j].hasOwnProperty('id') &&
+                    initialConfig.scenes[sceneId].hotSpots[j].id === hotSpotId) {
                     // Remove hot spot from configuration
-                    initialConfig.scenes[sceneId].hotSpots.splice(i, 1);
+                    initialConfig.scenes[sceneId].hotSpots.splice(j, 1);
                     return true;
                 }
             }
@@ -2983,7 +2981,7 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
             return false;
         }
     }
-}
+};
 
 /**
  * This method should be called if the viewer's container is resized.
@@ -2993,7 +2991,7 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
 this.resize = function() {
     if (renderer)
         onDocumentResize();
-}
+};
 
 /**
  * Check if a panorama is loaded.
@@ -3003,7 +3001,7 @@ this.resize = function() {
  */
 this.isLoaded = function() {
     return loaded;
-}
+};
 
 /**
  * Check if device orientation control is supported.
@@ -3013,7 +3011,7 @@ this.isLoaded = function() {
  */
 this.isOrientationSupported = function() {
     return orientationSupport || false;
-}
+};
 
 /**
  * Stop using device orientation.
@@ -3022,7 +3020,7 @@ this.isOrientationSupported = function() {
  */
 this.stopOrientation = function() {
     stopOrientation();
-}
+};
 
 /**
  * Start using device orientation (does nothing if not supported).
@@ -3032,7 +3030,7 @@ this.stopOrientation = function() {
 this.startOrientation = function() {
     if (orientationSupport)
         startOrientation();
-}
+};
 
 /**
  * Check if device orientation control is currently activated.
@@ -3042,7 +3040,7 @@ this.startOrientation = function() {
  */
 this.isOrientationActive = function() {
     return Boolean(orientation);
-}
+};
 
 /**
  * Subscribe listener to specified event.
@@ -3056,7 +3054,7 @@ this.on = function(type, listener) {
     externalEventListeners[type] = externalEventListeners[type] || [];
     externalEventListeners[type].push(listener);
     return this;
-}
+};
 
 /**
  * Remove an event listener (or listeners).
@@ -3086,7 +3084,7 @@ this.off = function(type, listener) {
         delete externalEventListeners[type];
     }
     return this;
-}
+};
 
 /**
  * Fire listeners attached to specified event.
@@ -3126,7 +3124,7 @@ this.destroy = function() {
     }
     container.innerHTML = '';
     container.classList.remove('pnlm-container');
-}
+};
 
 }
 
