@@ -2746,6 +2746,8 @@ this.setHorizonPitch = function(pitch) {
 
 /**
  * Start auto rotation.
+ *
+ * Before starting rotation, the viewer is panned to the initial pitch.
  * @memberof Viewer
  * @instance
  * @param {number} [speed] - Auto rotation speed / direction. If not specified, previous value is used.
