@@ -959,6 +959,9 @@ var pointerIDs = [],
  */
 function onDocumentPointerDown(event) {
     if (event.pointerType == 'touch') {
+        // Only do something if the panorama is loaded
+        if (!loaded || !config.draggable)
+            return;
         pointerIDs.push(event.pointerId);
         pointerCoordinates.push({clientX: event.clientX, clientY: event.clientY});
         event.targetTouches = pointerCoordinates;
@@ -974,6 +977,8 @@ function onDocumentPointerDown(event) {
  */
 function onDocumentPointerMove(event) {
     if (event.pointerType == 'touch') {
+        if (!config.draggable)
+            return;
         for (var i = 0; i < pointerIDs.length; i++) {
             if (event.pointerId == pointerIDs[i]) {
                 pointerCoordinates[i].clientX = event.clientX;
