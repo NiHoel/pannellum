@@ -2439,12 +2439,17 @@ function escapeHTML(s) {
  * @returns {string} Sanitized URL
  */
 function sanitizeURL(url, href) {
-    if (url.trim().toLowerCase().indexOf('javascript:') === 0 ||
-        url.trim().toLowerCase().indexOf('vbscript:') === 0) {
+    try {
+        var decoded_url = decodeURIComponent(unescape(url)).replace(/[^\w:]/g, '').toLowerCase();
+    } catch (e) {
+        return 'about:blank';
+    }
+    if (decoded_url.indexOf('javascript:') === 0 ||
+        decoded_url.indexOf('vbscript:') === 0) {
         console.log('Script URL removed.');
         return 'about:blank';
     }
-    if (href && url.trim().toLowerCase().indexOf('data:') === 0) {
+    if (href && decoded_url.indexOf('data:') === 0) {
         console.log('Data URI removed from link.');
         return 'about:blank';
     }
@@ -2452,7 +2457,29 @@ function sanitizeURL(url, href) {
 }
 
 /**
- * Removes possibility of XSS attacks with URLs for CSS.
+ * Unescapes HTML entities.
+ * Copied from Marked.js 0.7.0.
+ * @private
+ * @param {string} url - URL to sanitize
+ * @param {boolean} href - True if URL is for link (blocks data URIs)
+ * @returns {string} Sanitized URL
+ */
+function unescape(html) {
+    // Explicitly match decimal, hex, and named HTML entities
+    return html.replace(/&(#(?:\d+)|(?:#x[0-9A-Fa-f]+)|(?:\w+));?/ig, function(_, n) {
+        n = n.toLowerCase();
+        if (n === 'colon') return ':';
+        if (n.charAt(0) === '#') {
+            return n.charAt(1) === 'x'
+                ? String.fromCharCode(parseInt(n.substring(2), 16))
+                : String.fromCharCode(+n.substring(1));
+        }
+        return '';
+    });
+}
+
+/**
+ * Removes possibility of XSS atacks with URLs for CSS.
  * The URL will be sanitized with `sanitizeURL()` and single quotes
  * and double quotes escaped.
  * @private
