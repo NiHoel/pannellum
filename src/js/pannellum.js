@@ -2426,7 +2426,10 @@ function stopOrientation() {
  * @private
  */
 function startOrientation() {
-    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    if (!orientationSupport)
+        return;
+    if (typeof DeviceMotionEvent !== undefined &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission().then(function(response) {
             if (response == 'granted') {
                 orientation = 1;
@@ -3130,8 +3133,7 @@ this.stopOrientation = function() {
  * @instance
  */
 this.startOrientation = function() {
-    if (orientationSupport)
-        startOrientation();
+    startOrientation();
 };
 
 /**
