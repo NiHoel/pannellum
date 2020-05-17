@@ -1183,7 +1183,9 @@ function Renderer(container) {
                         this.callback(this.texture, true);
                     }
                     releaseTextureImageLoader(this);
-                })
+                }).catch(() => {
+                    this.callback(this.texture, false);
+                });
             } else {
                 this.image.src = src;
             }
