@@ -1132,12 +1132,16 @@ function Renderer(container) {
     /**
      * Processes a loaded texture image into a WebGL texture.
      * @private
-     * @param {Image} img - Input image.
+     * @param {Image | ImageBitmap | ImageData | HTMLCanvasElement} img - Input image.
      * @param {WebGLTexture} tex - Texture to bind image to.
      */
     function processLoadedTexture(img, tex) {
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+        if (img instanceof HTMLCanvasElement) {
+            var data = img.getContext('2d').getImageData(0, 0, img.width, img.height);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, data)
+        }else
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
