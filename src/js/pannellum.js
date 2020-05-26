@@ -259,7 +259,7 @@ controls.orientation.addEventListener('touchstart', function(e) {e.stopPropagati
 controls.orientation.addEventListener('pointerdown', function(e) {e.stopPropagation();});
 controls.orientation.className = 'pnlm-orientation-button pnlm-orientation-button-inactive pnlm-sprite pnlm-controls pnlm-control';
 var orientationSupport = false;
-    if (window.DeviceOrientationEvent && location.protocol == 'https:' ||  navigator.userAgent.toLowerCase().indexOf('android') && 
+    if (window.DeviceOrientationEvent && (location.protocol == 'https:' ||  navigator.userAgent.toLowerCase().indexOf('android')) && 
     navigator.userAgent.toLowerCase().indexOf('mobi') >= 0) {
     // This user agent check is here because there's no way to check if a
     // device has an inertia measurement unit. We used to be able to check if a
@@ -2381,8 +2381,8 @@ function loadScene(sceneId, targetPitch, targetYaw, targetHfov, fadeDone) {
             fadeImg.onload = function() {
                 loadScene(sceneId, targetPitch, targetYaw, targetHfov, true);
             };
-            fadeImg.src = data;
             renderContainer.appendChild(fadeImg);
+            fadeImg.src = data;            
             renderer.fadeImg = fadeImg;
             return;
         }
@@ -2932,6 +2932,18 @@ this.setUpdate = function(bool) {
         animateInit();
     return this;
 };
+
+/**
+ * Sets update flag for dynamic content.
+ * @memberof Viewer
+ * @instance
+ * @param {boolean} bool - Whether or not orientation is enabled by default
+ * @returns {Viewer} `this`
+ */
+this.setOrientationOnByDefault = function (bool) {
+    config.orientationOnByDefault = bool === true;
+    return this;
+}
 
 /**
  * Calculate panorama pitch and yaw from location of mouse event.
