@@ -329,6 +329,15 @@ If `clickHandlerFunc` is specified, this function is added as an event handler
 for the hot spot's `click` event. The event object and the contents of
 `clickHandlerArgs` are passed to the function as arguments.
 
+#### `draggable`
+
+If specified, the hotspot can moved using the mouse or by touch.
+
+#### `dragHandlerFunc` (function)
+
+If `dragHandlerFunc` is specified, this function is added as an event handler
+when dragging of the hotspot starts and ends. The event object are passed to the function as arguments.
+
 #### `scale` (boolean)
 
 When `true`, the hot spot is scaled to match changes in the field of view,
