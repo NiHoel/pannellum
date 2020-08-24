@@ -30,7 +30,7 @@ window.pannellum = (function(window, document, undefined) {
  * @constructor
  * @param {HTMLElement|string} container - The container (div) element for the
  *      viewer, or its ID.
- * @param {Object} initialConfig - Inital configuration for viewer.
+ * @param {Object} initialConfig - Initial configuration for viewer.
  */
 function Viewer(container, initialConfig) {
 
@@ -69,6 +69,7 @@ var config,
     specifiedPhotoSphereExcludes = [],
     update = false, // Should we update when still to render dynamic content
     eps = 1e-6,
+    resizeObserver,
     hotspotsCreated = false,
     destroyed = false;
 
@@ -221,7 +222,7 @@ controls.container.className = 'pnlm-controls-container';
 uiContainer.appendChild(controls.container);
 
 // Load button
-controls.load = document.createElement('div');
+controls.load = document.createElement('button');
 controls.load.className = 'pnlm-load-button';
 controls.load.addEventListener('click', function() {
     processOptions();
@@ -386,7 +387,8 @@ function init() {
         
         if (config.dynamic !== true) {
             // Still image
-            if (config.panorama instanceof Image) {
+            if (config.panorama instanceof Image || config.panorama instanceof ImageData ||
+                config.panorama instanceof ImageBitmap) {
                 panoImage = config.panorama;
                 onImageLoad();
                 return;
@@ -506,8 +508,13 @@ function onImageLoad() {
         container.addEventListener('webkitfullscreenchange', onFullScreenChange, false);
         container.addEventListener('msfullscreenchange', onFullScreenChange, false);
         container.addEventListener('fullscreenchange', onFullScreenChange, false);
+        if (typeof ResizeObserver === 'function') {
+            resizeObserver = new ResizeObserver(onDocumentResize);
+            resizeObserver.observe(container);
+        } else {
         window.addEventListener('resize', onDocumentResize, false);
         window.addEventListener('orientationchange', onDocumentResize, false);
+        }
         if (!config.disableKeyboardCtrl) {
             container.addEventListener('keydown', onDocumentKeyPress, false);
             container.addEventListener('keyup', onDocumentKeyUp, false);
@@ -532,7 +539,7 @@ function onImageLoad() {
     }
 
     renderInit();
-    setHfov(config.hfov); // possibly adapt hfov after configuration and canvas is complete; prevents empty space on top or bottom by zomming out too much
+    setHfov(config.hfov); // Possibly adapt HFOV after configuration and canvas is complete; prevents empty space on top or bottom by zooming out too much
     setTimeout(function(){isTimedOut = true;}, 500);
 }
 
@@ -820,8 +827,7 @@ function mouseEventToCoords(event) {
 function onDocumentMouseMove(event) {
     if (draggingHotSpot) {
         moveHotSpot(draggingHotSpot, event);
-    }
-    else if (isUserInteracting && loaded) {
+    } else if (isUserInteracting && loaded) {
         latestInteraction = Date.now();
         var canvas = renderer.getCanvas();
         var canvasWidth = canvas.clientWidth,
@@ -846,7 +852,7 @@ function onDocumentMouseMove(event) {
  */
 function onDocumentMouseUp(event) {
     if (draggingHotSpot && draggingHotSpot.dragHandlerFunc)
-        draggingHotSpot.dragHandlerFunc(event);
+        draggingHotSpot.dragHandlerFunc(event, draggingHotSpot.dragHandlerArgs);
     draggingHotSpot = null;
 
     if (!isUserInteracting) {
@@ -1030,7 +1036,7 @@ function onDocumentPointerMove(event) {
  */
 function onDocumentPointerUp(event) {
     if (draggingHotSpot && draggingHotSpot.dragHandlerFunc)
-        draggingHotSpot.dragHandlerFunc(event);
+        draggingHotSpot.dragHandlerFunc(event, draggingHotSpot.dragHandlerArgs);
     draggingHotSpot = null;
 
     if (event.pointerType == 'touch') {
@@ -1857,24 +1863,29 @@ function createHotSpot(hs) {
         span.className += ' pnlm-pointer';
     }
     if (hs.draggable) {
-        // handle mouse by container event listeners
-        div.addEventListener('mousedown', (e) => {
+        // Handle mouse by container event listeners
+        div.addEventListener('mousedown', function (e) {
+            if (hs.dragHandlerFunc)
+                hs.dragHandlerFunc(e, hs.dragHandlerArgs);
             draggingHotSpot = hs;
         });
 
         if (document.documentElement.style.pointerAction === '' &&
             document.documentElement.style.touchAction === '') {
-            div.addEventListener('pointerdown', (e) => {
+            div.addEventListener('pointerdown', function (e) {
+                if (hs.dragHandlerFunc)
+                    hs.dragHandlerFunc(e, hs.dragHandlerArgs);
                 draggingHotSpot = hs;
             });
         }
 
-        // handle touch events by hotspot event listener
-        div.addEventListener('touchmove', (e) => {
+        // Handle touch events by hotspot event listener
+        div.addEventListener('touchmove', function(e) {
             moveHotSpot(hs, e.targetTouches[0]);
         });
-        div.addEventListener('touchend', (e) => {
-            hs.dragHandlerFunc(event);
+        div.addEventListener('touchend', function (e) {
+            if (hs.dragHandlerFunc)
+                hs.dragHandlerFunc(e, hs.dragHandlerArgs);
             draggingHotSpot = null;
         })
     }
@@ -1883,14 +1894,13 @@ function createHotSpot(hs) {
 }
 
 /**
- *
- * @param {hotspot} hs
- * @param {MouseEvent} event
+ * Moves a curently displayed hot spot.
  * @private
- *
+ * @param {Object} hs - Hot spot to move.
+ * @param {MouseEvent} event - Mouse event to get coordinates from.
  */
 function moveHotSpot(hs, event){
-    let coords = mouseEventToCoords(event);
+    var coords = mouseEventToCoords(event);
     hs.pitch = coords[0];
     hs.yaw = coords[1];
     renderHotSpot(hs);
@@ -2108,7 +2118,7 @@ function processOptions(isPreview) {
         infoDisplay.container.style.display = 'none';
 
     // Fill in load button label and loading box text
-    controls.load.innerHTML = '<p>' + config.strings.loadButtonLabel + '</p>';
+    controls.load.innerHTML = '<div><p>' + config.strings.loadButtonLabel + '</p></div>';
     infoDisplay.load.boxp.innerHTML = config.strings.loadingLabel;
 
     // Process other options
@@ -2523,7 +2533,7 @@ function stopOrientation() {
 function startOrientation() {
     if (!orientationSupport)
         return;
-    if (typeof DeviceMotionEvent !== undefined &&
+    if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission().then(function(response) {
             if (response == 'granted') {
@@ -2606,7 +2616,7 @@ function unescape(html) {
 }
 
 /**
- * Removes possibility of XSS atacks with URLs for CSS.
+ * Removes possibility of XSS attacks with URLs for CSS.
  * The URL will be sanitized with `sanitizeURL()` and single quotes
  * and double quotes escaped.
  * @private
@@ -2847,7 +2857,7 @@ this.setVfov = function (vfov, animated, callback, callbackArgs) {
  * (in degrees).
  * @memberof Viewer
  * @instance
- * @returns {number[]} [minimum hfov, maximum hfov]
+ * @returns {number[]} [minimum HFOV, maximum HFOV]
  */
 this.getHfovBounds = function() {
     return [config.minHfov, config.maxHfov];
@@ -2868,7 +2878,7 @@ this.getVfovBounds = function () {
  * Set the minimum and maximum allowed horizontal fields of view (in degrees).
  * @memberof Viewer
  * @instance
- * @param {number[]} bounds - [minimum hfov, maximum hfov]
+ * @param {number[]} bounds - [minimum HFOV, maximum HFOV]
  * @returns {Viewer} `this`
  */
 this.setHfovBounds = function(bounds) {
@@ -2898,7 +2908,7 @@ this.setVfovBounds = function (bounds) {
  * @instance
  * @param {number} [pitch] - Target pitch
  * @param {number} [yaw] - Target yaw
- * @param {number} [hfov] - Target hfov
+ * @param {number} [hfov] - Target HFOV
  * @param {boolean|number} [animated=1000] - Animation duration in milliseconds or false for no animation
  * @param {function} [callback] - Function to call when animation finishes
  * @param {object} [callbackArgs] - Arguments to pass to callback function
@@ -3001,14 +3011,16 @@ this.setHorizonPitch = function(pitch) {
  * @memberof Viewer
  * @instance
  * @param {number} [speed] - Auto rotation speed / direction. If not specified, previous value is used.
- * @param {number} [pitch] - The pitch to rotate at. If not specified, inital pitch is used.
+ * @param {number} [pitch] - The pitch to rotate at. If not specified, initial pitch is used.
+ * @param {number} [hfov] - The HFOV to rotate at. If not specified, initial HFOV is used.
  * @returns {Viewer} `this`
  */
-this.startAutoRotate = function(speed, pitch) {
+this.startAutoRotate = function(speed, pitch, hfov) {
     speed = speed || autoRotateSpeed || 1;
     pitch = pitch === undefined ? origPitch : pitch;
+    hfov = hfov === undefined ? origHfov : hfov;
     config.autoRotate = speed;
-    _this.lookAt(pitch, undefined, origHfov, 3000);
+    _this.lookAt(pitch, undefined, hfov, 3000);
     animateInit();
     return this;
 };
@@ -3383,8 +3395,12 @@ this.destroy = function() {
         container.removeEventListener('webkitfullscreenchange', onFullScreenChange, false);
         container.removeEventListener('msfullscreenchange', onFullScreenChange, false);
         container.removeEventListener('fullscreenchange', onFullScreenChange, false);
+        if (resizeObserver) {
+            resizeObserver.disconnect();
+        } else {
         window.removeEventListener('resize', onDocumentResize, false);
         window.removeEventListener('orientationchange', onDocumentResize, false);
+        }
         container.removeEventListener('keydown', onDocumentKeyPress, false);
         container.removeEventListener('keyup', onDocumentKeyUp, false);
         container.removeEventListener('blur', clearKeys, false);
