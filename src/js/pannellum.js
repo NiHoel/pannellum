@@ -3081,6 +3081,7 @@ this.setUpdate = function(bool) {
  */
 this.setOrientationOnByDefault = function (bool) {
     config.orientationOnByDefault = bool === true;
+    initialConfig.default.orientationOnByDefault = bool === true;
     return this;
 }
 
