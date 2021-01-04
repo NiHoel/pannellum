@@ -114,6 +114,7 @@ var defaultConfig = {
     draggable: true,
     disableKeyboardCtrl: false,
     crossOrigin: 'anonymous',
+    targetBlank: false,
     touchPanSpeedCoeffFactor: 1,
     capturedKeyNumbers: [16, 17, 27, 37, 38, 39, 40, 61, 65, 68, 83, 87, 107, 109, 173, 187, 189],
     friction: 0.15
@@ -164,7 +165,13 @@ uiContainer.appendChild(dragFix);
 // Display about information on right click
 var aboutMsg = document.createElement('span');
 aboutMsg.className = 'pnlm-about-msg';
-aboutMsg.innerHTML = '<a href="https://pannellum.org/" target="_blank">Pannellum</a>';
+var aboutMsgLink = document.createElement('a');
+aboutMsgLink.href = 'https://pannellum.org/';
+aboutMsgLink.textContent = 'Pannellum';
+aboutMsg.appendChild(aboutMsgLink);
+var aboutMsgVersion = document.createElement('span');
+// VERSION PLACEHOLDER FOR BUILD
+aboutMsg.appendChild(aboutMsgVersion);
 uiContainer.appendChild(aboutMsg);
 dragFix.addEventListener('contextmenu', aboutMessage);
 
@@ -386,7 +393,7 @@ function init() {
         if (config.dynamic !== true) {
             // Still image
             if (config.panorama instanceof Image || config.panorama instanceof ImageData ||
-                config.panorama instanceof ImageBitmap) {
+                (window.ImageBitmap && config.panorama instanceof ImageBitmap)) {
                 panoImage = config.panorama;
                 onImageLoad();
                 return;
@@ -589,7 +596,10 @@ function parseGPanoXMP(image, url) {
                 topPixels: getTag('GPano:CroppedAreaTopPixels'),
                 heading: getTag('GPano:PoseHeadingDegrees'),
                 horizonPitch: getTag('GPano:PosePitchDegrees'),
-                horizonRoll: getTag('GPano:PoseRollDegrees')
+                horizonRoll: getTag('GPano:PoseRollDegrees'),
+                pitch: getTag('GPano:InitialViewPitchDegrees'),
+                yaw: getTag('GPano:InitialViewHeadingDegrees'),
+                hfov: getTag('GPano:InitialHorizontalFOVDegrees')
             };
             
             if (xmp.fullWidth !== null && xmp.croppedWidth !== null &&
@@ -617,7 +627,12 @@ function parseGPanoXMP(image, url) {
                         config.horizonRoll = xmp.horizonRoll;
                 }
                 
-                // TODO: add support for initial view settings
+                if (xmp.pitch != null && specifiedPhotoSphereExcludes.indexOf('pitch') < 0)
+                    config.pitch = xmp.pitch;
+                if (xmp.yaw != null && specifiedPhotoSphereExcludes.indexOf('yaw') < 0)
+                    config.yaw = xmp.yaw;
+                if (xmp.hfov != null && specifiedPhotoSphereExcludes.indexOf('hfov') < 0)
+                    config.hfov = xmp.hfov;
             }
         }
         
@@ -1244,12 +1259,12 @@ function keyRepeat() {
     if (prevTime === undefined) {
         prevTime = newTime;
     }
-    var diff = (newTime - prevTime) * config.hfov / 1700;
-    diff = Math.min(diff, 1.0);
+    var diff = (newTime - prevTime) * config.hfov / 1200;
+    diff = Math.min(diff, 10.0); // Avoid jump if something goes wrong with time diff
     
     // If minus key is down
     if (keysDown[0] && config.keyboardZoom === true) {
-        setHfov(config.hfov + (speed.hfov * 0.8 + 0.5) * diff);
+        setHfov(config.hfov + (speed.hfov * 0.8 + 0.4) * diff);
         isKeyDown = true;
     }
     
@@ -1796,7 +1811,10 @@ function createHotSpot(hs) {
             imgp = config.basePath + imgp;
         a = document.createElement('a');
         a.href = sanitizeURL(hs.URL ? hs.URL : imgp, true);
+        if (config.targetBlank) {
         a.target = '_blank';
+            a.rel = 'noopener';
+        }
         span.appendChild(a);
         var image = document.createElement('img');
         image.src = sanitizeURL(imgp);
@@ -1812,8 +1830,9 @@ function createHotSpot(hs) {
             for (var key in hs.attributes) {
                 a.setAttribute(key, hs.attributes[key]);
             }
-        } else {
+        } else if (config.targetBlank) {
             a.target = '_blank';
+            a.rel = 'noopener';
         }
         renderContainer.appendChild(a);
         div.className += ' pnlm-pointer';
@@ -2114,6 +2133,10 @@ function processOptions(isPreview) {
         infoDisplay.author.innerHTML = '';
     if (!config.hasOwnProperty('title') && !config.hasOwnProperty('author'))
         infoDisplay.container.style.display = 'none';
+    if (config.targetBlank) {
+        aboutMsgLink.rel = 'noopener';
+        aboutMsgLink.target = '_blank';
+    }
 
     // Fill in load button label and loading box text
     controls.load.innerHTML = '<div><p>' + config.strings.loadButtonLabel + '</p></div>';
@@ -2133,7 +2156,10 @@ function processOptions(isPreview) {
                 if (config.authorURL) {
                     var authorLink = document.createElement('a');
                     authorLink.href = sanitizeURL(config['authorURL'], true);
+                    if (config.targetBlank) {
                     authorLink.target = '_blank';
+                        authorLink.rel = 'noopener';
+                    }
                     authorLink.innerHTML = escapeHTML(config[key]);
                     authorText = authorLink.outerHTML;
                 }
@@ -2144,7 +2170,10 @@ function processOptions(isPreview) {
             case 'fallback':
                 var link = document.createElement('a');
                 link.href = sanitizeURL(config[key], true);
+                if (config.targetBlank) {
                 link.target = '_blank';
+                    link.rel = 'noopener';
+                }
                 link.textContent = 'Click here to view this panorama in an alternative viewer.';
                 var message = document.createElement('p');
                 message.textContent = 'Your browser does not support WebGL.';
@@ -2453,19 +2482,29 @@ function loadScene(sceneId, targetPitch, targetYaw, targetHfov, fadeDone) {
     // Set up fade if specified
     var fadeImg, workingPitch, workingYaw, workingHfov;
     if (config.sceneFadeDuration && !fadeDone) {
-        var data = renderer.render(config.pitch * Math.PI / 180, config.yaw * Math.PI / 180, config.hfov * Math.PI / 180, {returnImage: true});
+        var data = renderer.render(config.pitch * Math.PI / 180, config.yaw * Math.PI / 180, config.hfov * Math.PI / 180, {returnImage: 'ImageBitmap'});
         if (data !== undefined) {
-            fadeImg = new Image();
+            if (data.then)
+                fadeImg = document.createElement('canvas');
+            else
+                fadeImg = new Image(); // ImageBitmap isn't supported
             fadeImg.className = 'pnlm-fade-img';
             fadeImg.style.transition = 'opacity ' + (config.sceneFadeDuration / 1000) + 's';
             fadeImg.style.width = '100%';
             fadeImg.style.height = '100%';
+            if (data.then) {
+                data.then(function(img) {
+                    fadeImg.width = img.width;
+                    fadeImg.height = img.height;
+                    fadeImg.getContext('2d').drawImage(img, 0, 0);
+                    loadScene(sceneId, targetPitch, targetYaw, targetHfov, true);
+                });
+            } else {
             fadeImg.onload = function() {
-
-                setTimeout(() => loadScene(sceneId, targetPitch, targetYaw, targetHfov, true), 100); // prevents black flickering before fading
             };
+                fadeImg.src = data;
+            }
             renderContainer.appendChild(fadeImg);
-            fadeImg.src = data;            
             renderer.fadeImg = fadeImg;
             return;
         }
