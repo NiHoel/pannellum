@@ -1,6 +1,6 @@
 /*
  * Pannellum - An HTML5 based Panorama Viewer
- * Copyright (c) 2011-2020 Matthew Petroff
+ * Copyright (c) 2011-2021 Matthew Petroff
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -112,6 +112,7 @@ var defaultConfig = {
     avoidShowingBackground: false,
     animationTimingFunction: timingFunction,
     draggable: true,
+    dragConfirm: false,
     disableKeyboardCtrl: false,
     crossOrigin: 'anonymous',
     targetBlank: false,
@@ -142,6 +143,10 @@ defaultConfig.strings = {
                 '%spx wide. Try another device.' +
                 ' (If you\'re the author, try scaling down the image.)',    // Two substitutions: image width, max image width
     unknownError: 'Unknown error. Check developer console.',
+    twoTouchActivate: 'Use two fingers together to pan the panorama.',
+    twoTouchXActivate: 'Use two fingers together to pan the panorama horizontally.',
+    twoTouchYActivate: 'Use two fingers together to pan the panorama vertically.',
+    ctrlZoomActivate: 'Use %s + scroll to zoom the panorama.',  // One substitution: key name
 };
 
 // Initialize container
@@ -219,6 +224,11 @@ uiContainer.appendChild(infoDisplay.load.box);
 infoDisplay.errorMsg = document.createElement('div');
 infoDisplay.errorMsg.className = 'pnlm-error-msg pnlm-info-box';
 uiContainer.appendChild(infoDisplay.errorMsg);
+
+// Interaction message
+infoDisplay.interactionMsg = document.createElement('div');
+infoDisplay.interactionMsg.className = 'pnlm-interaction-msg pnlm-info-box';
+uiContainer.appendChild(infoDisplay.interactionMsg);
 
 // Create controls
 var controls = {};
@@ -708,6 +718,36 @@ function clearError() {
 }
 
 /**
+ * Displays an interaction message.
+ * @private
+ * @param {string} msg - Message to display.
+ */
+function showInteractionMessage(interactionMsg) {
+    infoDisplay.interactionMsg.style.opacity = 1;
+
+    infoDisplay.interactionMsg.innerHTML = '<p>' + interactionMsg + '</p>';
+    infoDisplay.interactionMsg.style.display = 'table';
+    fireEvent('messageshown');
+
+    clearTimeout(infoDisplay.interactionMsg.timeout);
+    infoDisplay.interactionMsg.removeEventListener('transitionend', clearInteractionMessage);
+    infoDisplay.interactionMsg.timeout = setTimeout(function() {
+        infoDisplay.interactionMsg.style.opacity = 0;
+        infoDisplay.interactionMsg.addEventListener('transitionend', clearInteractionMessage);
+    }, 2000);
+}
+
+/**
+ * Hides interaction message display.
+ * @private
+ */
+function clearInteractionMessage() {
+    infoDisplay.interactionMsg.style.opacity = 0;
+    infoDisplay.interactionMsg.style.display = 'none';
+    fireEvent('messagecleared');
+}
+
+/**
  * Displays about message.
  * @private
  * @param {MouseEvent} event - Right click location
@@ -940,7 +980,8 @@ function onDocumentTouchMove(event) {
     }
 
     // Override default action
-    event.preventDefault();
+    if (!config.dragConfirm)
+        event.preventDefault();
     if (loaded) {
         latestInteraction = Date.now();
     }
@@ -948,7 +989,7 @@ function onDocumentTouchMove(event) {
         var pos0 = mousePosition(event.targetTouches[0]);
         var clientX = pos0.x;
         var clientY = pos0.y;
-        
+
         if (event.targetTouches.length == 2 && onPointerDownPointerDist != -1) {
             var pos1 = mousePosition(event.targetTouches[1]);
             clientX += (pos1.x - pos0.x) * 0.5;
@@ -968,13 +1009,40 @@ function onDocumentTouchMove(event) {
         // the user's finger while panning regardless of zoom level / config.hfov value.
         var touchmovePanSpeedCoeff = (config.hfov / 360) * config.touchPanSpeedCoeffFactor;
 
-        var yaw = (onPointerDownPointerX - clientX) * touchmovePanSpeedCoeff + onPointerDownYaw;
-        speed.yaw = (yaw - config.yaw) % 360 * 0.2;
-        config.yaw = yaw;
 
-        var pitch = (clientY - onPointerDownPointerY) * touchmovePanSpeedCoeff + onPointerDownPitch;
-        speed.pitch = (pitch - config.pitch) * 0.2;
-        config.pitch = pitch;
+        if (!fullscreenActive && (config.dragConfirm == 'both' || config.dragConfirm == 'yaw') && event.targetTouches.length != 2) {
+            if (onPointerDownPointerX != clientX) {
+                if (config.dragConfirm == 'yaw')
+                    showInteractionMessage(config.strings.twoTouchXActivate);
+                else
+                    showInteractionMessage(config.strings.twoTouchActivate);
+            }
+        } else {
+            var yaw = (onPointerDownPointerX - clientX) * touchmovePanSpeedCoeff + onPointerDownYaw;
+            speed.yaw = (yaw - config.yaw) % 360 * 0.2;
+            config.yaw = yaw;
+        }
+
+
+        if (!fullscreenActive && (config.dragConfirm == 'both' || config.dragConfirm == 'pitch') && event.targetTouches.length != 2) {
+            if (onPointerDownPointerY != clientY) {
+                if (config.dragConfirm == 'pitch')
+                    showInteractionMessage(config.strings.twoTouchYActivate);
+                else
+                    showInteractionMessage(config.strings.twoTouchActivate);
+            }
+        } else {
+            var pitch = (clientY - onPointerDownPointerY) * touchmovePanSpeedCoeff + onPointerDownPitch;
+            speed.pitch = (pitch - config.pitch) * 0.2;
+            config.pitch = pitch;
+        }
+
+
+        if ((config.dragConfirm == 'yaw' || config.dragConfirm == 'pitch' || config.dragConfirm == 'both') && event.targetTouches.length == 2) {
+            clearInteractionMessage();
+            event.preventDefault();
+        }
+
     }
 }
 
@@ -1080,6 +1148,14 @@ function onDocumentMouseWheel(event) {
         return;
     }
 
+    // Ctrl for zoom
+    if (!fullscreenActive && config.mouseZoom == 'ctrl' && !event.ctrlKey) {
+        var keyname = navigator.platform.indexOf('Mac') != -1 ? 'control' : 'ctrl';
+        showInteractionMessage(config.strings.ctrlZoomActivate.replace('%s', '<kbd class="pnlm-outline">' + keyname + '</kbd>'));
+        return;
+    }
+    clearInteractionMessage();
+
     event.preventDefault();
 
     // Turn off auto-rotation if enabled
@@ -1120,6 +1196,10 @@ function onDocumentKeyPress(event) {
 
     // Override default action for keys that are used
     if (config.capturedKeyNumbers.indexOf(keynumber) < 0)
+        return;
+    if (!fullscreenActive && (keynumber == 16 || keynumber == 17) && config.mouseZoom == 'ctrl')
+        // Disable ctrl / shift zoom when holding the ctrl key is required for
+        // scroll wheel zooming
         return;
     event.preventDefault();
     
@@ -1355,6 +1435,10 @@ function keyRepeat() {
         }
         // Zoom
         if (!keysDown[0] && !keysDown[1] && !animatedMove.hfov) {
+            if (config.hfov > 90) {
+                // Slow down faster for wider HFOV
+                slowDownFactor *= 1 - (config.hfov - 90) / 90;
+            }
             setHfov(config.hfov + speed.hfov * diff * slowDownFactor);
         }
     }
@@ -1803,7 +1887,7 @@ function createHotSpot(hs) {
         video.src = sanitizeURL(vidp);
         video.controls = true;
         video.style.width = hs.width + 'px';
-        renderContainer.appendChild(div);
+        uiContainer.appendChild(div);
         span.appendChild(video);
     } else if (hs.image) {
         var imgp = hs.image;
@@ -1820,7 +1904,7 @@ function createHotSpot(hs) {
         image.src = sanitizeURL(imgp);
         image.style.width = hs.width + 'px';
         image.style.paddingTop = '5px';
-        renderContainer.appendChild(div);
+        uiContainer.appendChild(div);
         a.appendChild(image);
         span.style.maxWidth = 'initial';
     } else if (hs.URL) {
@@ -1834,7 +1918,7 @@ function createHotSpot(hs) {
             a.target = '_blank';
             a.rel = 'noopener';
         }
-        renderContainer.appendChild(a);
+        uiContainer.appendChild(a);
         div.className += ' pnlm-pointer';
         span.className += ' pnlm-pointer';
         a.appendChild(div);
@@ -1850,7 +1934,7 @@ function createHotSpot(hs) {
             div.className += ' pnlm-pointer';
             span.className += ' pnlm-pointer';
         }
-        renderContainer.appendChild(div);
+        uiContainer.appendChild(div);
     }
 
     if (hs.createTooltipFunc) {
@@ -1955,10 +2039,10 @@ function destroyHotSpots() {
         for (var i = 0; i < hs.length; i++) {
             var current = hs[i].div;
             if (current) {
-                while (current.parentNode && current.parentNode != renderContainer) {
+                while (current.parentNode && current.parentNode != uiContainer) {
                     current = current.parentNode;
                 }
-                renderContainer.removeChild(current);
+                uiContainer.removeChild(current);
             }
             delete hs[i].div;
         }
@@ -2459,6 +2543,7 @@ function load() {
     clearError();
     loaded = false;
 
+    clearInteractionMessage();
     controls.load.style.display = 'none';
     infoDisplay.load.box.style.display = 'inline';
     init();
@@ -3050,13 +3135,19 @@ this.setHorizonPitch = function(pitch) {
  * @param {number} [speed] - Auto rotation speed / direction. If not specified, previous value is used.
  * @param {number} [pitch] - The pitch to rotate at. If not specified, initial pitch is used.
  * @param {number} [hfov] - The HFOV to rotate at. If not specified, initial HFOV is used.
+ * @param {number} [inactivityDelay] - The delay, in milliseconds, after which
+ *      to automatically restart auto rotation if it is interupted by the user.
+ *      If not specified, auto rotation will not automatically restart after it
+ *      is stopped.
  * @returns {Viewer} `this`
  */
-this.startAutoRotate = function(speed, pitch, hfov) {
+this.startAutoRotate = function(speed, pitch, hfov, inactivityDelay) {
     speed = speed || autoRotateSpeed || 1;
     pitch = pitch === undefined ? origPitch : pitch;
     hfov = hfov === undefined ? origHfov : hfov;
     config.autoRotate = speed;
+    if (inactivityDelay !== undefined)
+        config.autoRotateInactivityDelay = inactivityDelay;
     _this.lookAt(pitch, undefined, hfov, 3000);
     animateInit();
     return this;
@@ -3271,9 +3362,9 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
                 config.hotSpots[i].id === hotSpotId) {
                 // Delete hot spot DOM elements
                 var current = config.hotSpots[i].div;
-                while (current.parentNode != renderContainer)
+                while (current.parentNode != uiContainer)
                     current = current.parentNode;
-                renderContainer.removeChild(current);
+                uiContainer.removeChild(current);
                 delete config.hotSpots[i].div;
                 // Remove hot spot from configuration
                 config.hotSpots.splice(i, 1);
@@ -3306,16 +3397,6 @@ this.removeHotSpot = function(hotSpotId, sceneId) {
 this.resize = function() {
     if (renderer)
         onDocumentResize();
-};
-
-/**
- * Check if a panorama is loaded.
- * @memberof Viewer
- * @instance
- * @returns {boolean} True if a panorama is loaded, else false
- */
-this.isLoaded = function() {
-    return loaded;
 };
 
 /**
